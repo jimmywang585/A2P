@@ -1,0 +1,32 @@
+Step Exact:          34/180  (18.9%)
+Step Within-1:       53/180  (29.4%)
+Step Within-2:       76/180  (42.2%)
+Step Within-5:      138/180  (76.7%)
+Agent Exact:         73/180  (40.6%)
+
+Top-1 Step:          34/180  (18.9%)
+Top-3 Step:          71/180  (39.4%)
+Top-5 Step:         100/180  (55.6%)
+Top-1 Agent:         73/180  (40.6%)
+Top-3 Agent:        133/180  (73.9%)
+Top-5 Agent:        160/180  (88.9%)
+
+MRR:                 0.3265
+NDCG@1:              0.4222
+NDCG@3:              0.5139
+NDCG@5:              0.5870
+Kendall τ:           0.1069
+
+VHR (raw):           51.7%
+VHR/100 replays:     1.86
+Root fixes/100:     16.18
+Mean replays→fix:  808.16
+Any fix success:    80.6%
+Total validated:     809
+
+Alg-Gen (N=125):    step=21.6%  step≤2=46.4%  agent=38.4%
+Hand-Crafted (N=55): step=12.7%  step≤2=32.7%  agent=45.5%
+
+Avg trace length:   22.3
+Random baseline:     4.5%
+Replay budget:      5000
