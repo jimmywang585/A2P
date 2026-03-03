@@ -1,9 +1,19 @@
 import os
 import json
-import torch
 import random
-from transformers import pipeline as pipeline_function, AutoTokenizer, AutoModelForCausalLM, Pipeline
 from tqdm import tqdm
+
+try:
+    import torch
+    from transformers import pipeline as pipeline_function, AutoTokenizer, AutoModelForCausalLM, Pipeline
+    HAS_TORCH = True
+except ImportError:
+    torch = None
+    pipeline_function = None
+    AutoTokenizer = None
+    AutoModelForCausalLM = None
+    Pipeline = None
+    HAS_TORCH = False
 
 def _get_sorted_json_files(directory_path):
     try:

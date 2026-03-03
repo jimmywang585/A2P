@@ -6,8 +6,16 @@ import datetime
 import asyncio
 from dotenv import load_dotenv
 from tqdm import tqdm
-import torch
-from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
+try:
+    import torch
+    from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
+    HAS_TORCH = True
+except ImportError:
+    torch = None
+    pipeline = None
+    AutoModelForCausalLM = None
+    AutoTokenizer = None
+    HAS_TORCH = False
 from openai import AzureOpenAI, OpenAI
 
 from Lib.utils import (
@@ -31,6 +39,10 @@ from Lib.local_model import (
 
 
 KNOWN_GPT_MODELS = {"gpt-4o", "gpt4", "gpt4o-mini"}
+STANDARD_OPENAI_MODELS = {"gpt4o-mini"}  # Models that use standard OpenAI API instead of Azure
+STANDARD_OPENAI_MODEL_MAP = {
+    "gpt4o-mini": "gpt-4o-mini",
+}
 GPT_OSS_MODELS = {"gpt-oss-120b"}
 LOCAL_LLAMA_ALIASES = {"llama-8b", "llama-70b"}
 LOCAL_QWEN_ALIASES = {"qwen-7b", "qwen-72b"}
@@ -184,7 +196,7 @@ def main():
     )
 
     parser.add_argument(
-        "--device", type=str, default="cuda:1" if torch.cuda.is_available() else "cpu",
+        "--device", type=str, default="cuda:1" if (HAS_TORCH and torch.cuda.is_available()) else "cpu",
         help="Device for local model inference (e.g., 'cuda', 'cuda:0', 'cpu'). Default: 'cuda' if available, else 'cpu'."
     )
     
@@ -231,7 +243,27 @@ def main():
     model_family = None 
     model_id_or_deployment = args.model
 
-    if args.model in KNOWN_GPT_MODELS:
+    if args.model in STANDARD_OPENAI_MODELS:
+        # Use standard OpenAI API for these models
+        model_type = 'gpt'
+        model_family = 'gpt'
+        model_id_or_deployment = STANDARD_OPENAI_MODEL_MAP[args.model]
+        print(f"Selected standard OpenAI model: {args.model} -> {model_id_or_deployment}")
+        
+        openai_api_key = os.environ.get("OPENAI_API_KEY", args.api_key)
+        if not openai_api_key or openai_api_key.strip() == "":
+            print("Error: OPENAI_API_KEY environment variable or --api_key is required for standard OpenAI models")
+            sys.exit(1)
+        try:
+            client_or_model_obj = OpenAI(
+                api_key=openai_api_key,
+            )
+            print(f"Successfully initialized standard OpenAI client.")
+        except Exception as e:
+            print(f"Error initializing OpenAI client: {e}")
+            sys.exit(1)
+
+    elif args.model in KNOWN_GPT_MODELS:
         model_type = 'gpt'
         model_family = 'gpt'
         print(f"Selected GPT model: {args.model}")
@@ -378,12 +410,13 @@ def main():
             print("-" * 20)
 
             if model_type == 'gpt':
+                is_handcrafted_bool = args.is_handcrafted == "True"
                 if args.method == "all_at_once":
                     gpt_all_at_once(
                         client=client_or_model_obj,
                         directory_path=args.directory_path,
-                        is_handcrafted=args.is_handcrafted,
-                        model=args.model,
+                        is_handcrafted=is_handcrafted_bool,
+                        model=model_id_or_deployment,
                         max_tokens=args.max_tokens,
                         a2p=args.a2p
                     )
@@ -391,16 +424,16 @@ def main():
                     gpt_step_by_step(
                         client=client_or_model_obj,
                         directory_path=args.directory_path,
-                        is_handcrafted=args.is_handcrafted,
-                        model=args.model,
+                        is_handcrafted=is_handcrafted_bool,
+                        model=model_id_or_deployment,
                         max_tokens=args.max_tokens
                     )
                 elif args.method == "binary_search":
                     gpt_binary_search(
                         client=client_or_model_obj,
                         directory_path=args.directory_path,
-                        is_handcrafted=args.is_handcrafted,
-                        model=args.model,
+                        is_handcrafted=is_handcrafted_bool,
+                        model=model_id_or_deployment,
                         max_tokens=args.max_tokens
                     )
             elif model_type == 'gpt-oss':
